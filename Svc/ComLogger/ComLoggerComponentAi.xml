@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<?oxygen RNGSchema="file:../xml/ISF_Component_Schema.rnc" type="compact"?>
+<?xml-model href="../../Autocoders/schema/ISF/component_schema.rng" type="application/xml" schematypens="http://relaxng.org/ns/structure/1.0"?>
 
 <component name="ComLogger" kind="active" namespace="Svc" modeler="true">
 
@@ -12,8 +12,9 @@
     <import_port_type>Svc/Ping/PingPortAi.xml</import_port_type>
     <import_dictionary>Svc/ComLogger/Commands.xml</import_dictionary>
     <import_dictionary>Svc/ComLogger/Events.xml</import_dictionary>
+    <import_port_type>Fw/Log/LogTextPortAi.xml</import_port_type>
 
-    <ports>
+<ports>
 
 
         <port name="comIn" data_type="Fw::Com"  kind="async_input"    max_number="1">
@@ -33,12 +34,16 @@
 
         <port name="cmdResponseOut" data_type="Fw::CmdResponse"  kind="output" role="CmdResponse"    max_number="1">
         </port>
-        
+
         <port name="pingIn" data_type="Svc::Ping" kind="async_input"  max_number = "1">
         </port>
-        
-        <port name="pingOut" data_type="Svc::Ping" kind="output"  max_number = "1">
+
+        <port name="pingOut" data_type="Svc::Ping" kind="output"  max_number = "1"> 
         </port>
+
+        <port name="textLogOut" data_type="Fw::LogText"  kind="output" role="LogTextEvent"    max_number="1">
+        </port>
+    
     </ports>
 
 </component>

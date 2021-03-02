@@ -16,6 +16,6 @@ register_fprime_module()
 set(UT_SOURCE_FILES
   "${FPRIME_FRAMEWORK_PATH}/Svc/ComLogger/ComLoggerComponentAi.xml"
   "${CMAKE_CURRENT_LIST_DIR}/test/ut/Tester.cpp"
-  "${CMAKE_CURRENT_LIST_DIR}/test/ut/Main.cpp"
+  "${CMAKE_CURRENT_LIST_DIR}/test/ut/TestMain.cpp"
 )
 register_fprime_ut()

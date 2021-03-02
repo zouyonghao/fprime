@@ -9,7 +9,7 @@
 
 ======================================================================-->
 
-<events event_base="0x00">
+<events>
 
   <event id="0x00" name="FileOpenError" severity="WARNING_HI" format_string="Error %d opening file %s">
     <comment>The ComLogger encountered an error opening a file</comment>
@@ -58,6 +58,15 @@
 
   <event id="0x03" name="FileClosed" severity="DIAGNOSTIC" format_string="File %s closed successfully.">
     <comment>The ComLogger successfully closed a file on command.</comment>
+    <args>
+      <arg name="file" type="string" size="240">
+        <comment>The file</comment>
+      </arg>
+    </args>
+  </event>
+
+  <event id="0x04" name="FileRestarted" severity="ACTIVITY_LO" format_string="File %s restarted.">
+    <comment>The ComLogger restarted the log file</comment>
     <args>
       <arg name="file" type="string" size="240">
         <comment>The file</comment>

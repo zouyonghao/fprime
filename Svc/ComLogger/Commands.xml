@@ -9,10 +9,16 @@
 
 ======================================================================-->
 
-<commands opcode_base="0x00">
+<commands>
 
   <command kind="async" opcode="0x00" mnemonic="CloseFile">
     <comment>Forces a close of the currently opened file.</comment>
+  </command>
+  <command kind="async" opcode="0x01" mnemonic="StopLogging">
+    <comment>Forces a close of the currently opened file, stops opening new file.</comment>
+  </command>
+  <command kind="async" opcode="0x02" mnemonic="StartLogging">
+    <comment>Allows opening new file after stop.</comment>
   </command>
 
 </commands>

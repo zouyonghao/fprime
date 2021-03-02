@@ -1,41 +1,68 @@
-// ----------------------------------------------------------------------
-// Tester.hpp 
-// ----------------------------------------------------------------------
+// ======================================================================
+// \title  ComLogger/test/ut/Tester.hpp
+// \author janamian
+// \brief  hpp file for ComLogger test harness implementation class
+//
+// \copyright
+// Copyright 2009-2015, by the California Institute of Technology.
+// ALL RIGHTS RESERVED.  United States Government Sponsorship
+// acknowledged.
+//
+// ======================================================================
 
 #ifndef TESTER_HPP
 #define TESTER_HPP
 
 #include "GTestBase.hpp"
-#include "../../ComLogger.hpp"
-#include <Fw/Comp/ActiveComponentBase.hpp>
-#include <stdio.h>
+#include "Svc/ComLogger/ComLogger.hpp"
 
-#define QUEUE_DEPTH 10
-#define FILE_STR "test"
 #define MAX_ENTRIES_PER_FILE 5
-#define COM_BUFFER_LENGTH 4
-#define MAX_BYTES_PER_FILE (MAX_ENTRIES_PER_FILE*COM_BUFFER_LENGTH + MAX_ENTRIES_PER_FILE*sizeof(U16))
-#define MAX_BYTES_PER_FILE_NO_LENGTH (MAX_ENTRIES_PER_FILE*COM_BUFFER_LENGTH)
 
 namespace Svc {
+
   class Tester :
     public ComLoggerGTestBase
   {
 
+      // ----------------------------------------------------------------------
+      // Construction and destruction
+      // ----------------------------------------------------------------------
+
     public:
-      Tester(const char *const compName);
+
+      //! Construct object Tester
+      //!
+      Tester(void);
+
+      //! Destroy object Tester
+      //!
       ~Tester(void);
 
-      void testLogging(void);
-      void testLoggingNoLength(void);
+    public:
+
+      // ----------------------------------------------------------------------
+      // Tests
+      // ----------------------------------------------------------------------
+      void testComIn(
+        bool storeBufferLength, 
+        bool storeFrameKey,
+        U32 arbitraryUSecond
+        );
+
       void openError(void);
       void writeError(void);
       void closeFileCommand(void);
+      
+      void test_getFileSuffix(void);
+      void test_openFile(void);
+      
+
     private:
-      void connectPorts(void);
-      void initComponents(void);
-      void dispatchOne(void);
-      void dispatchAll(void);
+
+      // ----------------------------------------------------------------------
+      // Handlers for typed from ports
+      // ----------------------------------------------------------------------
+
       //! Handler for from_pingOut
       //!
       void from_pingOut_handler(
@@ -43,9 +70,39 @@ namespace Svc {
           U32 key /*!< Value to return to pinger*/
       );
 
-      ComLogger comLogger;
+    private:
+
+      // ----------------------------------------------------------------------
+      // Helper methods
+      // ----------------------------------------------------------------------
+
+      //! Connect ports
+      //!
+      void connectPorts(void);
+
+      //! Initialize components
+      //!
+      void initComponents(void);
+
+      void dispatchOne(void);
+      void dispatchAll(void);
+      void createTestFileName(
+        U8* expectedFileName, 
+        U8* expectedHashFileName
+        );
+
+    private:
+
+      // ----------------------------------------------------------------------
+      // Variables
+      // ----------------------------------------------------------------------
+
+      //! The component under test
+      //!
+      ComLogger component;
+
   };
 
-};
+} // end namespace Svc
 
 #endif
