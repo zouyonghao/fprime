@@ -121,8 +121,8 @@ namespace Svc {
       Os::File file;
       U8 fileName[MAX_FILENAME_LENGTH];
       U32 byteCount;
-      bool writeErrorOccured;
-      bool openErrorOccured;
+      bool writeErrorOccurred;
+      bool openErrorOccurred;
       bool storeBufferLength;
       bool storeFrameKey;
       bool fileInfoSet;

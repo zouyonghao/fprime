@@ -25,8 +25,8 @@ namespace Svc {
     logMode(STARTED),
     fileMode(CLOSED), 
     byteCount(0),
-    writeErrorOccured(false),
-    openErrorOccured(false),
+    writeErrorOccurred(false),
+    openErrorOccurred(false),
     storeBufferLength(false),
     storeFrameKey(false),
     fileInfoSet(false),
@@ -209,15 +209,15 @@ namespace Svc {
     }
 
     if( Os::File::OP_OK != ret ) { 
-      if( !openErrorOccured ) { // throttle this event, otherwise a positive 
+      if( !openErrorOccurred ) { // throttle this event, otherwise a positive 
                                 // feedback event loop can occur!
         Fw::LogStringArg logStringArg((char*) this->fileName);
         this->log_WARNING_HI_FileOpenError(ret, logStringArg);
       }
-      openErrorOccured = true;
+      openErrorOccurred = true;
       } else {
         // Reset event throttle:
-        openErrorOccured = false;
+        openErrorOccurred = false;
 
         // Reset byte count:
         this->byteCount = 0;
@@ -306,16 +306,16 @@ void ComLogger ::
     NATIVE_INT_TYPE size = length;
     Os::File::Status ret = file.write(data, size);
     if( Os::File::OP_OK != ret || size != (NATIVE_INT_TYPE) length ) {
-      if( !writeErrorOccured ) { // throttle this event, otherwise a positive 
+      if( !writeErrorOccurred ) { // throttle this event, otherwise a positive 
                                  // feedback event loop can occur!
         Fw::LogStringArg logStringArg((char*) this->fileName);
         this->log_WARNING_HI_FileWriteError(ret, size, length, logStringArg);
       }
-      writeErrorOccured = true;
+      writeErrorOccurred = true;
       return false;
     }
 
-    writeErrorOccured = false;
+    writeErrorOccurred = false;
     return true;
   }
 
