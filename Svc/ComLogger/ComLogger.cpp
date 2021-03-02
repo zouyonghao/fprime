@@ -53,9 +53,6 @@ namespace Svc {
       // faults.
       this->file.close(); 
 
-      // Write out the hash file to disk:
-      this->writeHashFile();
-
       // Update mode:
       this->fileMode = CLOSED;
     }
@@ -238,9 +235,6 @@ namespace Svc {
       // Close file:
       this->file.close();
 
-      // Write out the hash file to disk:
-      this->writeHashFile();
-
       // Update mode:
       this->fileMode = CLOSED;
 
@@ -326,18 +320,6 @@ void ComLogger ::
   }
 
   void ComLogger :: 
-    writeHashFile(void)
-  {
-    Os::ValidateFile::Status validateStatus;
-    validateStatus = Os::ValidateFile::createValidation((char*) this->fileName, (char*)this->hashFileName);
-    if( Os::ValidateFile::VALIDATION_OK != validateStatus ) {
-      Fw::LogStringArg logStringArg1((char*) this->fileName);
-      Fw::LogStringArg logStringArg2((char*) this->hashFileName);
-      this->log_WARNING_LO_FileValidationError(logStringArg1, logStringArg2, validateStatus);
-    }
-  }
-
-  void ComLogger :: 
     getFileSuffix(
       U8* suffix
       )
@@ -370,19 +352,11 @@ void ComLogger ::
       getFileSuffix(suffix);
       
       // Create filename:
-      U32 bytesCopied;
+      U32 bytesCopied = 0;
       bytesCopied = snprintf((char*) this->fileName, sizeof(this->fileName), 
                               "%s%s", 
                               this->filePrefix, 
                               suffix);
       FW_ASSERT( bytesCopied < sizeof(this->fileName) );
-
-      // Create hash filename:
-      bytesCopied = snprintf((char*) this->hashFileName, sizeof(this->hashFileName), 
-                              "%s%s%s", 
-                              this->filePrefix, 
-                              suffix,
-                              Utils::Hash::getFileExtensionString()); 
-      FW_ASSERT( bytesCopied < sizeof(this->hashFileName) );
     }
 };

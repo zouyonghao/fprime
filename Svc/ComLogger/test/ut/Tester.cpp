@@ -62,7 +62,7 @@ namespace Svc {
   // ----------------------------------------------------------------------
   
   void Tester ::
-    createTestFileName(U8* expectedFileName, U8* expectedHashFileName)
+    createTestFileName(U8* expectedFileName)
     {
       U8 expectedSuffix[ComLogger::MAX_SUFFIX_LENGTH]; 
       component.getFileSuffix(expectedSuffix);
@@ -74,15 +74,6 @@ namespace Svc {
         "%s%s", 
         FILE_PREFIX, 
         (char*) expectedSuffix);
-      ASSERT_LT( bytesCopied, ComLogger::MAX_FILENAME_LENGTH );
-
-      bytesCopied = snprintf(
-        (char*) expectedHashFileName, 
-        ComLogger::MAX_FILENAME_LENGTH, 
-        "%s%s%s", 
-        FILE_PREFIX, 
-        (char*) expectedSuffix,
-        Utils::Hash::getFileExtensionString()); 
       ASSERT_LT( bytesCopied, ComLogger::MAX_FILENAME_LENGTH );
     }
 
@@ -116,8 +107,7 @@ namespace Svc {
       
       // Create expected filename:      
       U8 expectedFileName[ComLogger::MAX_FILENAME_LENGTH];
-      U8 expectedHashFileName[ComLogger::MAX_FILENAME_LENGTH];
-      createTestFileName(expectedFileName, expectedHashFileName);
+      createTestFileName(expectedFileName);
 
       // Before sending any data:
       // Initial fileMode must be CLOSED
@@ -149,8 +139,7 @@ namespace Svc {
 
       // Create next expected filename:      
       U8 nextExpectedFileName[ComLogger::MAX_FILENAME_LENGTH];
-      U8 nextExpectedHashFileName[ComLogger::MAX_FILENAME_LENGTH];
-      createTestFileName(nextExpectedFileName, nextExpectedHashFileName);
+      createTestFileName(nextExpectedFileName);
       
       // The new file should be in open mode
       ASSERT_TRUE(component.fileMode == ComLogger::OPEN);
@@ -228,12 +217,6 @@ namespace Svc {
       ASSERT_EQ(Os::File::OP_OK,ret);
       ASSERT_EQ(sizeOfLastBlock, 0);
       file.close();
-
-      // Assert that the hashes match:
-
-      Os::ValidateFile::Status status;
-      status = Os::ValidateFile::validate((char*) expectedFileName, (char*) expectedHashFileName);
-      ASSERT_EQ(Os::ValidateFile::VALIDATION_OK, status);
     }
 
 
@@ -422,7 +405,6 @@ void Tester ::
     component.setup(FILE_PREFIX, MAX_FILE_SIZE_WITH_STORE_LEN_ENABLED, true, false, false);
     Os::File file;
     U8 fileName[2048];
-    U8 hashFileName[2048];
     Os::File::Status ret;
 
     // Form filenames:
@@ -430,8 +412,6 @@ void Tester ::
     setTestTime(testTime);
     memset(fileName, 0, sizeof(fileName));
     snprintf((char*) fileName, sizeof(fileName), "%s_%d_%d_%06d.com", FILE_PREFIX, testTime.getTimeBase(), testTime.getSeconds(), testTime.getUSeconds());
-    memset(hashFileName, 0, sizeof(hashFileName));
-    snprintf((char*) hashFileName, sizeof(hashFileName), "%s_%d_%d_%06d.com%s", FILE_PREFIX, testTime.getTimeBase(), testTime.getSeconds(), testTime.getUSeconds(), Utils::Hash::getFileExtensionString());
 
     ASSERT_TRUE(component.fileMode == ComLogger::CLOSED);
     ASSERT_EVENTS_SIZE(0);
@@ -489,9 +469,6 @@ void Tester ::
 
     // Open files to make sure they exist:
     ret = file.open((char*) fileName, Os::File::OPEN_READ);
-    ASSERT_EQ(Os::File::OP_OK,ret);
-    file.close();
-    ret = file.open((char*) hashFileName, Os::File::OPEN_READ);
     ASSERT_EQ(Os::File::OP_OK,ret);
     file.close();
   }

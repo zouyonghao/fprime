@@ -86,10 +86,7 @@ namespace Svc {
 
       void dispatchOne(void);
       void dispatchAll(void);
-      void createTestFileName(
-        U8* expectedFileName, 
-        U8* expectedHashFileName
-        );
+      void createTestFileName(U8* expectedFileName);
 
     private:
 

@@ -11,7 +11,6 @@
 #include <Os/File.hpp>
 #include <Os/Mutex.hpp>
 #include <Fw/Types/Assert.hpp>
-#include <Utils/Hash/Hash.hpp>
 
 #include <limits.h>
 #include <stdio.h>
@@ -121,7 +120,6 @@ namespace Svc {
       FileMode fileMode;
       Os::File file;
       U8 fileName[MAX_FILENAME_LENGTH];
-      U8 hashFileName[MAX_FILENAME_LENGTH];
       U32 byteCount;
       bool writeErrorOccured;
       bool openErrorOccured;
@@ -152,8 +150,6 @@ namespace Svc {
         U16 length
       );
     
-      void writeHashFile(void);
-
       void setFileName(void);
 
       void getFileSuffix(U8* suffix);
