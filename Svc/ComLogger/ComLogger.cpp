@@ -5,12 +5,9 @@
 // ----------------------------------------------------------------------
 
 #include <Svc/ComLogger/ComLogger.hpp>
-#include <Fw/Types/BasicTypes.hpp>
-#include <Fw/Types/SerialBuffer.hpp>
-#include <Os/ValidateFile.hpp>
-#include <Fw/Types/StringUtils.hpp>
 #include <Svc/ComLogger/ComLoggerCfg.hpp>
-#include <stdio.h>
+#include <Fw/Types/SerialBuffer.hpp>
+#include <Fw/Types/StringUtils.hpp>
 
 namespace Svc {
 
@@ -21,14 +18,14 @@ namespace Svc {
   ComLogger ::
     ComLogger(const char* compName) :
     ComLoggerComponentBase(compName), 
+    fileInfix(""),
+    fileSuffix(""),
     maxFileSize(0),
+    byteCount(0),
     logMode(STARTED),
     fileMode(CLOSED), 
-    byteCount(0),
     writeErrorOccurred(false),
     openErrorOccurred(false),
-    storeBufferLength(false),
-    storeFrameKey(false),
     fileInfoSet(false),
     resetOnMaxSize(false)
   {
@@ -62,22 +59,14 @@ namespace Svc {
     setup(
       const char* filePrefix,
       U32 maxFileSize,
-      bool storeBufferLength, 
-      bool storeFrameKey,
       bool resetOnMaxSize
     )
     {
       this->maxFileSize = maxFileSize;
-      this->storeBufferLength = storeBufferLength;
-      this->storeFrameKey = storeFrameKey;
       this->resetOnMaxSize = resetOnMaxSize;
       
-      if(this->storeBufferLength) {
-        FW_ASSERT(maxFileSize > sizeof(U16), maxFileSize); // must be a positive integer greater than buffer length size
-      }
-      else {
-        FW_ASSERT(maxFileSize > sizeof(0), maxFileSize); // must be a positive integer
-      }
+      // must be a positive value greater than meta data size
+      FW_ASSERT(maxFileSize > META_DATA_SIZE, maxFileSize); 
       
       setFilePrefix(filePrefix);
       
@@ -87,23 +76,6 @@ namespace Svc {
   void ComLogger::preamble(void) {
       FW_ASSERT(this->fileInfoSet);
   }
-
-  void ComLogger ::
-    setFilePrefix(
-      const char* filePrefix
-      ) 
-    {
-      // Copy the file name
-      U8* dest = (U8*) Fw::StringUtils::string_copy(
-                  (char*)this->filePrefix,
-                  filePrefix, 
-                  sizeof(this->filePrefix)
-                  );
-
-      FW_ASSERT(dest == this->filePrefix, 
-                reinterpret_cast<POINTER_CAST>(dest), 
-                reinterpret_cast<POINTER_CAST>(this->filePrefix));
-    }
 
   // ----------------------------------------------------------------------
   // Handler implementations
@@ -120,17 +92,15 @@ namespace Svc {
 
     // Get length of buffer:
     U32 size32 = data.getBuffLength();
-    // ComLogger only writes 16-bit sizes to save space 
-    // on disk:
+    
+    // ComLogger only writes 16-bit sizes to save space on disk:
     FW_ASSERT(size32 < 65536, size32);
     U16 size = size32 & 0xFFFF;
 
     // Close or restart the file if it will be too big:
     if( OPEN == this->fileMode ) {
-      U32 projectedByteCount = this->byteCount + size;
-      if( this->storeBufferLength ) {
-        projectedByteCount += sizeof(size);
-      }
+      U32 projectedByteCount = this->byteCount + size + META_DATA_SIZE;
+
       if( projectedByteCount > this->maxFileSize ) {
         if (this->resetOnMaxSize) {
           this->restartFile();
@@ -141,7 +111,7 @@ namespace Svc {
       }
     }
 
-    // Open the file if it there is not one open:
+    // Open the file if there is not one open:
     if( CLOSED == this->fileMode && STOPPED != this->logMode){
       this->openFile();
     }
@@ -151,6 +121,20 @@ namespace Svc {
       this->writeComBufferToFile(data, size);
     }
   }
+
+  void ComLogger ::
+    pingIn_handler(
+        const NATIVE_INT_TYPE portNum,
+        U32 key
+    )
+  {
+      // return key
+      this->pingOut_out(0,key);
+  }
+
+  // ----------------------------------------------------------------------
+  // Command handler implementations
+  // ----------------------------------------------------------------------
 
   void ComLogger :: 
     StartLogging_cmdHandler(
@@ -184,20 +168,25 @@ namespace Svc {
   }
 
   void ComLogger ::
-    pingIn_handler(
-        const NATIVE_INT_TYPE portNum,
-        U32 key
+    SetRecordName_cmdHandler(
+        const FwOpcodeType opCode,
+        const U32 cmdSeq,
+        const Fw::CmdStringArg& recordName
     )
   {
-      // return key
-      this->pingOut_out(0,key);
+    this->setFileInfix(recordName);
+    this->cmdResponse_out(opCode,cmdSeq,Fw::COMMAND_OK);
   }
 
+  // ----------------------------------------------------------------------
+  // File functions:
+  // ---------------------------------------------------------------------- 
+
   void ComLogger ::
-    openFile(
-    )
+    openFile(void)
   {
     FW_ASSERT( CLOSED == this->fileMode );
+    setFileSuffix();
     setFileName();
 
     // Open file
@@ -228,8 +217,7 @@ namespace Svc {
   }
 
   void ComLogger ::
-    closeFile(
-    )
+    closeFile(void)
   {
       if( OPEN == this->fileMode ) {
       // Close file:
@@ -260,31 +248,32 @@ namespace Svc {
       }
     }
 
-void ComLogger ::
+  void ComLogger ::
     writeComBufferToFile(
       Fw::ComBuffer &data,
       U16 size
     )
   {
-    // Setup a buffer to store optional key and size
-    U16 key = static_cast<U16>(COM_LOGGER_FRAME_START_KEY);
-    U8 buffer[sizeof(size) + sizeof(key)];
-    Fw::SerialBuffer serialExtra(buffer, sizeof(size) + sizeof(key));
+    // Setup a buffer to store meta data key and frame size
+    const U16 key = static_cast<U16>(COM_LOGGER_FRAME_START_KEY);
+    U8 metaData[META_DATA_SIZE];
+    Fw::SerialBuffer serialMetaData(metaData, META_DATA_SIZE);
 
-    // Store a frame-key, if desired
-    if ( this->storeFrameKey ) {
-        FW_ASSERT(serialExtra.serialize(key) == Fw::FW_SERIALIZE_OK);
-    }
+    // Store a frame-key
+    FW_ASSERT(serialMetaData.serialize(key) == Fw::FW_SERIALIZE_OK);
 
-    // Store a frame-size, if desired
-    if( this->storeBufferLength ) {
-        FW_ASSERT(serialExtra.serialize(size) == Fw::FW_SERIALIZE_OK);
-    }
+    // Store a frame-size
+    FW_ASSERT(serialMetaData.serialize(size) == Fw::FW_SERIALIZE_OK);
 
     // Write out the extras if they exist
-    if ( serialExtra.getBuffLength() > 0 ) {
-        if(writeToFile(serialExtra.getBuffAddr(), serialExtra.getBuffLength())) {
-          this->byteCount += serialExtra.getBuffLength();
+    if ( serialMetaData.getBuffLength() > 0 ) {
+        if(
+            writeToFile(
+              serialMetaData.getBuffAddr(), 
+              serialMetaData.getBuffLength()
+              )
+          ) {
+          this->byteCount += serialMetaData.getBuffLength();
         }
         else {
           return;
@@ -297,6 +286,10 @@ void ComLogger ::
     }
   }
 
+  // ----------------------------------------------------------------------
+  // Helper functions:
+  // ---------------------------------------------------------------------- 
+
   bool ComLogger ::
     writeToFile(
       void* data, 
@@ -305,6 +298,7 @@ void ComLogger ::
   {
     NATIVE_INT_TYPE size = length;
     Os::File::Status ret = file.write(data, size);
+    
     if( Os::File::OP_OK != ret || size != (NATIVE_INT_TYPE) length ) {
       if( !writeErrorOccurred ) { // throttle this event, otherwise a positive 
                                  // feedback event loop can occur!
@@ -319,44 +313,69 @@ void ComLogger ::
     return true;
   }
 
-  void ComLogger :: 
-    getFileSuffix(
-      U8* suffix
-      )
+  void ComLogger ::
+    setFilePrefix(
+      const char* filePrefix
+      ) 
     {
-      U32 bytesCopied;
-      if (resetOnMaxSize) 
+      // Copy the file name
+      U8* dest = (U8*) Fw::StringUtils::string_copy(
+                  (char*)this->filePrefix,
+                  filePrefix, 
+                  sizeof(this->filePrefix)
+                  );
+
+      FW_ASSERT(dest == this->filePrefix, 
+                reinterpret_cast<POINTER_CAST>(dest), 
+                reinterpret_cast<POINTER_CAST>(this->filePrefix));
+    }
+
+  void ComLogger :: 
+    setFileSuffix(void)
+    {
+      if (resetOnMaxSize)
       {
-        bytesCopied = snprintf((char*) suffix, MAX_SUFFIX_LENGTH, 
-                                COM_LOGGER_FILE_EXTENTION);
-      } 
-      else 
+        this->fileSuffix = COM_LOGGER_FILE_EXTENTION;
+      }
+      else
       {
         Fw::Time timestamp = getTime();
-        bytesCopied = snprintf((char*) suffix, MAX_SUFFIX_LENGTH, 
-                              "_%d_%d_%06d%s", 
-                              (U32) timestamp.getTimeBase(), 
-                              timestamp.getSeconds(), 
-                              timestamp.getUSeconds(),
-                              COM_LOGGER_FILE_EXTENTION);
+        this->fileSuffix.format(
+          "_%d_%d_%06d%s",
+          (U32) timestamp.getTimeBase(), 
+          timestamp.getSeconds(), 
+          timestamp.getUSeconds(),
+          COM_LOGGER_FILE_EXTENTION
+        );
       }
-                              
-      // A return value of size or more means that the output was truncated
-      FW_ASSERT( bytesCopied < MAX_SUFFIX_LENGTH );
     }
 
   void ComLogger ::
     setFileName(void)
     {
-      U8 suffix[MAX_SUFFIX_LENGTH]; 
-      getFileSuffix(suffix);
-      
       // Create filename:
       U32 bytesCopied = 0;
       bytesCopied = snprintf((char*) this->fileName, sizeof(this->fileName), 
-                              "%s%s", 
-                              this->filePrefix, 
-                              suffix);
+                              "%s%s%s", 
+                              this->filePrefix,
+                              this->fileInfix.toChar(),
+                              this->fileSuffix.toChar());
       FW_ASSERT( bytesCopied < sizeof(this->fileName) );
+    }
+
+  void ComLogger ::
+    setFileInfix(const Fw::CmdStringArg& recordName)
+    {
+      if (recordName.length() > 0) {
+        this->fileInfix.format("_%s", recordName.toChar());
+
+        // Send event:
+        Fw::LogStringArg logStringArg(recordName.toChar());
+        this->log_ACTIVITY_LO_RecordNameAdded(logStringArg);
+      } 
+      else 
+      {
+        this->fileInfix = "";
+      }
     }
 };

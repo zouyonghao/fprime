@@ -20,5 +20,11 @@
   <command kind="async" opcode="0x02" mnemonic="StartLogging">
     <comment>Allows opening new file after stop.</comment>
   </command>
+  <command kind="async" opcode="0x03" mnemonic="SetRecordName">
+    <comment>Set a name to be added after the file prefix.</comment>
+    <args>
+      <arg name="recordName" type="string" size = "80"/>
+    </args>
+  </command>
 
 </commands>

@@ -41,22 +41,7 @@
     </args>
   </event>
 
-  <event id="0x02" name="FileValidationError" severity="WARNING_LO" format_string="The ComLogger failed to create a validation file %s for %s with error %d.">
-    <comment>The ComLogger encountered an error writing the validation file</comment>
-    <args>
-      <arg name="validationFile" type="string" size="240">
-        <comment>The validation file</comment>
-      </arg>
-      <arg name="file" type="string" size="240">
-        <comment>The file</comment>
-      </arg>
-      <arg name="status" type="U32" size="240">
-        <comment>The Os::Validate::Status return</comment>
-      </arg>
-    </args>
-  </event>
-
-  <event id="0x03" name="FileClosed" severity="DIAGNOSTIC" format_string="File %s closed successfully.">
+  <event id="0x02" name="FileClosed" severity="DIAGNOSTIC" format_string="File %s closed successfully.">
     <comment>The ComLogger successfully closed a file on command.</comment>
     <args>
       <arg name="file" type="string" size="240">
@@ -65,11 +50,20 @@
     </args>
   </event>
 
-  <event id="0x04" name="FileRestarted" severity="ACTIVITY_LO" format_string="File %s restarted.">
+  <event id="0x03" name="FileRestarted" severity="ACTIVITY_LO" format_string="File %s restarted.">
     <comment>The ComLogger restarted the log file</comment>
     <args>
       <arg name="file" type="string" size="240">
         <comment>The file</comment>
+      </arg>
+    </args>
+  </event>
+
+  <event id="0x04" name="RecordNameAdded" severity="ACTIVITY_LO" format_string="Added record name %s.">
+    <comment>The ComLogger successfully added record name to the log file name</comment>
+    <args>
+      <arg name="recordName" type="string" size="240">
+        <comment>Record Name</comment>
       </arg>
     </args>
   </event>

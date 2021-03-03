@@ -43,19 +43,23 @@ namespace Svc {
       // ----------------------------------------------------------------------
       // Tests
       // ----------------------------------------------------------------------
-      void testComIn(
-        bool storeBufferLength, 
-        bool storeFrameKey,
-        U32 arbitraryUSecond
-        );
-
-      void openError(void);
-      void writeError(void);
-      void closeFileCommand(void);
-      
-      void test_getFileSuffix(void);
-      void test_openFile(void);
-      
+      void test_memberVariableInitiation(void);
+      void test_setupFunction(void);
+      void test_setFilePrefix(void);
+      void test_getFileSuffix(bool resetOnMaxSize);
+      void test_openFile_no_issue_case(bool resetOnMaxSize);
+      void test_openFile_checking_fileName(bool resetOnMaxSize);
+      void test_openFile_with_issue_case(void);
+      void test_closeFile(void);
+      void test_restartFile(void);
+      void test_writeToFile_with_issue(void);
+      void test_writeComBufferToFile(void);
+      void test_startLogging_cmd(void);
+      void test_stopLogging_cmd(void);
+      void test_closeFile_cmd(void);
+      void test_pingIn_cmd(void);
+      void test_setRecordName_cmd(void);
+      void test_comIn_cmd(bool resetOnMaxSize, bool addRecordName);
 
     private:
 
@@ -86,7 +90,10 @@ namespace Svc {
 
       void dispatchOne(void);
       void dispatchAll(void);
-      void createTestFileName(U8* expectedFileName);
+      
+      void setUpFixture(void);
+      void setExpectedFileName();
+      void setExpectedFileSuffix(bool resetOnMaxSize);
 
     private:
 
@@ -97,7 +104,9 @@ namespace Svc {
       //! The component under test
       //!
       ComLogger component;
-
+      Fw::EightyCharString expectedFileSuffix;
+      Fw::Time testTime;
+      U8 expectedFileName[ComLogger::MAX_FILENAME_LENGTH];
   };
 
 } // end namespace Svc

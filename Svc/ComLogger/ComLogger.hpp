@@ -9,12 +9,9 @@
 
 #include "Svc/ComLogger/ComLoggerComponentAc.hpp"
 #include <Os/File.hpp>
-#include <Os/Mutex.hpp>
-#include <Fw/Types/Assert.hpp>
+#include <Fw/Types/EightyCharString.hpp>
 
 #include <limits.h>
-#include <stdio.h>
-#include <cstdarg>
 
 namespace Svc {
 
@@ -38,43 +35,25 @@ namespace Svc {
       void setup(
         const char* filePrefix,
         U32 maxFileSize,
-        bool storeBufferLength=true, 
-        bool storeFrameKey=true,
         bool resetOnMaxSize=false);
 
       //! preamble function will be called before the event loop is entered
       //! to make sure setup() has been called at least once
       void preamble(void);
 
-      //! Set filePrefix (filepath and filename) defined by user to be used as
-      //! ComLogger output file
-      void setFilePrefix(const char* fileName); 
+    PRIVATE:
 
       // ----------------------------------------------------------------------
       // Handler implementations
       // ----------------------------------------------------------------------
-
-    PRIVATE:
-
+      
+      //! Handler implementation for comIn
+      //!
       void comIn_handler(
-          NATIVE_INT_TYPE portNum,
-          Fw::ComBuffer &data,
-          U32 context
-      );
+          const NATIVE_INT_TYPE portNum, /*!< The port number*/
+          Fw::ComBuffer &data, /*!< Buffer containing packet data*/
+          U32 context /*!< Call context value; meaning chosen by user*/
 
-      void CloseFile_cmdHandler(
-          FwOpcodeType opCode,
-          U32 cmdSeq
-      );
-
-      void StartLogging_cmdHandler(
-          FwOpcodeType opCode,
-          U32 cmdSeq
-      );
-
-      void StopLogging_cmdHandler(
-          FwOpcodeType opCode,
-          U32 cmdSeq
       );
 
       //! Handler implementation for pingIn
@@ -84,24 +63,57 @@ namespace Svc {
           U32 key /*!< Value to return to pinger*/
       );
 
+    PRIVATE:
+
+      // ----------------------------------------------------------------------
+      // Command handler implementations
+      // ----------------------------------------------------------------------
+
+      //! Implementation for CloseFile command handler
+      //! Forces a close of the currently opened file.
+      void CloseFile_cmdHandler(
+          const FwOpcodeType opCode, /*!< The opcode*/
+          const U32 cmdSeq /*!< The command sequence number*/
+      );
+
+      //! Implementation for StopLogging command handler
+      //! Forces a close of the currently opened file, stops opening new file.
+      void StopLogging_cmdHandler(
+          const FwOpcodeType opCode, /*!< The opcode*/
+          const U32 cmdSeq /*!< The command sequence number*/
+      );
+
+      //! Implementation for StartLogging command handler
+      //! Allows opening new file after stop.
+      void StartLogging_cmdHandler(
+          const FwOpcodeType opCode, /*!< The opcode*/
+          const U32 cmdSeq /*!< The command sequence number*/
+      );
+
+      //! Implementation for SetLogName command handler
+      //! Set a name to be added after the file prefix.
+      void SetRecordName_cmdHandler(
+          const FwOpcodeType opCode, /*!< The opcode*/
+          const U32 cmdSeq, /*!< The command sequence number*/
+          const Fw::CmdStringArg& recordName 
+      );
+
       // ----------------------------------------------------------------------
       // Constants:
       // ----------------------------------------------------------------------
       enum { 
+        // "frame key" and "length of buffer" are U16 and are saved as meta data
+        // before each frame
+        META_DATA_SIZE = 2 * sizeof(U16),
         // The maximum size of a filename as defined in limits.h 
-        // max bytes in a file name + max bytes in a path
         MAX_FILENAME_LENGTH = NAME_MAX + PATH_MAX, 
-        // Suffix has the following format _%d_%d_%06d%s
-        // Where %d are BaseTime, seconds, micro secends timestamp 
-        // and %s is file extention defined in ComLoggerCfg.hpp
-        MAX_SUFFIX_LENGTH = 40
+        // Suffix is file counter, timestamp and file extention
+        MAX_SUFFIX_LENGTH = 80,
+        // Infix (Record Name) is an optional string that user can add to the file prefix
+        MAX_INFIX_LENGTH = 80,
+        // Prefix is file path and base name of log file set during the setup
+        MAX_PREFIX_LENGTH = MAX_FILENAME_LENGTH - MAX_INFIX_LENGTH - MAX_SUFFIX_LENGTH 
       };
-
-      // Maximum filePrefix size must be at most MAX_SUFFIX_LENGTH smaller 
-      // than MAX_FILENAME_LENGTH to allow room for suffix (timestamp and 
-      // file extension) which is added by the ComLogger
-      U8 filePrefix[MAX_FILENAME_LENGTH - MAX_SUFFIX_LENGTH]; //!< Path and filename defined by user
-      U32 maxFileSize; //!< Maximum allowable file size before wraparound or creating new file 
 
       // ----------------------------------------------------------------------
       // Internal state:
@@ -116,20 +128,28 @@ namespace Svc {
           STARTED = 1
       };
 
-      LoggingMode logMode;
-      FileMode fileMode;
-      Os::File file;
-      U8 fileName[MAX_FILENAME_LENGTH];
-      U32 byteCount;
-      bool writeErrorOccurred;
-      bool openErrorOccurred;
-      bool storeBufferLength;
-      bool storeFrameKey;
-      bool fileInfoSet;
-      bool resetOnMaxSize; 
+      // ----------------------------------------------------------------------
+      // Member variables:
+      // ---------------------------------------------------------------------- 
+      
+      U8 filePrefix[MAX_PREFIX_LENGTH]; //!< Path and filename defined by user
+      Fw::EightyCharString fileInfix;   //!< An optional string (record name) that could be added to file prefix
+      Fw::EightyCharString fileSuffix;  //!< TimeStamp and file extention added during opening log file
+      U8 fileName[MAX_FILENAME_LENGTH]; //!< Complete filename after adding prefix infix and suffix
+      Os::File file;                    //!< File handler
+      U32 maxFileSize;                  //!< Maximum allowable file size before wraparound or creating new file 
+      U32 byteCount;                    //!< Number of bytes written to current open file
+      LoggingMode logMode;              //!< Indicating current state of logging (stopped or started)
+      FileMode fileMode;                //!< Indicating if the file is open or closed
+      bool writeErrorOccurred;          //<! Indicating there was an error writing to the file
+      bool openErrorOccurred;           //<! Indicating there was an error opening the file
+      bool fileInfoSet;                 //<! Indicating setup was called and was successful
+      bool resetOnMaxSize;              //<! If true will wraparound the file instead of creating new file
+
       // ----------------------------------------------------------------------
       // File functions:
       // ---------------------------------------------------------------------- 
+      
       void openFile(void);
 
       void closeFile(void);
@@ -141,19 +161,23 @@ namespace Svc {
         U16 size
       );
 
-      // ----------------------------------------------------------------------
-      // Helper functions:
-      // ---------------------------------------------------------------------- 
-
       bool writeToFile(
         void* data, 
         U16 length
       );
-    
+
+      // ----------------------------------------------------------------------
+      // Helper functions:
+      // ---------------------------------------------------------------------- 
+
+      //! Set filePrefix (filepath and filename) defined by user
+      void setFilePrefix(const char* fileName); 
+
       void setFileName(void);
 
-      void getFileSuffix(U8* suffix);
+      void setFileSuffix(void);
 
+      void setFileInfix(const Fw::CmdStringArg& recordName);
     };
   };
 
