@@ -43,7 +43,7 @@ namespace Svc {
     ~Tester(void)
   {
       for (U32 i = 0; i < buffers_index; i++) {
-          delete buffers[i];
+          delete [] buffers[i];
       }
   }
 
@@ -391,6 +391,7 @@ namespace Svc {
     )
   {
     // Copy buffer before recycling
+    std::cout << buffer.getSize() << std::endl;
     U8* data = new U8[buffer.getSize()];
     ASSERT_LT(buffers_index, FW_NUM_ARRAY_ELEMENTS(this->buffers));
     this->buffers[buffers_index] = data;
